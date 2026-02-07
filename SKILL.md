@@ -1,7 +1,9 @@
-# SKILL: memory-cache
+---
+name: memory-cache
+description: High-performance temporary storage using Redis. Use to save context, cache expensive API results, or share state between agent sessions. Follows strict key naming conventions.
+---
 
-## Description
-High-performance temporary storage using Redis. Use to save context, cache expensive API results, or share state between agent sessions. Follows strict key naming conventions.
+# Memory Cache
 
 ## Setup
 1.  Copy `.env.example` to `.env`.
