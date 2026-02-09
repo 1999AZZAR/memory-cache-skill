@@ -6,9 +6,10 @@ description: High-performance temporary storage using Redis. Use to save context
 # Memory Cache
 
 ## Setup
-1.  Copy `.env.example` to `.env`.
-2.  Ensure Redis is running locally or provide remote credentials.
-3.  Install `redis-tools` (apt) if not available.
+1. Copy `.env.example` to `.env`.
+2. Set `REDIS_URL` (e.g. `redis://localhost:6379/0`) or `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`, `REDIS_PASSWORD`.
+3. Ensure Redis is running. Optional timeouts: `REDIS_SOCKET_TIMEOUT`, `REDIS_SOCKET_CONNECT_TIMEOUT`.
+4. On first run, `scripts/cache` creates a venv and installs dependencies.
 
 ## Usage
 - **Role**: Memory Manager.
@@ -16,23 +17,56 @@ description: High-performance temporary storage using Redis. Use to save context
 - **Output**: Confirmation of storage or retrieved values.
 
 ## Commands (CLI)
-- `scripts/cache_manager.py set <key> <value> [--ttl X]`
-- `scripts/cache_manager.py get <key>`
-- `scripts/cache_manager.py keys <pattern>`
+
+Use `scripts/cache` (recommended) or `python3 scripts/cache_manager.py`.
+
+| Command | Description |
+|---------|-------------|
+| `set <key> <value> [--ttl N] [--json]` | Set key; optional TTL (seconds) and JSON encode |
+| `get <key> [--json]` | Get key; optional JSON decode and pretty-print |
+| `del <key>` | Delete key |
+| `exists <key>` | Return 1 if exists, 0 otherwise |
+| `ttl <key>` | Get TTL in seconds (-1 no expiry, -2 missing) |
+| `expire <key> <seconds>` | Set TTL on existing key |
+| `scan [pattern] [--count N]` | List keys by pattern (SCAN; production-safe) |
+| `keys [pattern]` | Alias for scan |
+| `ping` | Check Redis connection |
+
+All keys must follow `mema:<category>:<name>`. Invalid keys return exit code 2.
 
 ## Key Naming Convention
-**ALWAYS** follow `mema:<category>:<name>` structure.
-- `mema:context:*` -> Session context (TTL: 24h).
-- `mema:cache:*` -> API/Data cache (TTL: 7d).
-- `mema:state:*` -> Persistent app state.
+
+**ALWAYS** use the `mema:<category>:<name>` structure. Categories: `context`, `cache`, `state`, `queue`. Name segments: letters, numbers, `_`, `:`, `.`, `-`.
+
+- `mema:context:*` – Session context (TTL: 24h).
+- `mema:cache:*` – API/data cache (TTL: 7d).
+- `mema:state:*` – Persistent app state.
+- `mema:queue:*` – Task queues (lists/streams).
 
 See [Key Standards](references/key-standards.md) for full details.
 
 ## Examples
+
 ```bash
 # Cache a search result for 1 hour
-./scripts/cache_manager.py set mema:cache:search:123 "search result json" --ttl 3600
+./scripts/cache set mema:cache:search:123 "search result json" --ttl 3600
+
+# Store and retrieve JSON
+./scripts/cache set mema:cache:config '{"theme":"dark"}' --ttl 86400 --json
+./scripts/cache get mema:cache:config --json
 
 # Retrieve context
-./scripts/cache_manager.py get mema:context:summary
+./scripts/cache get mema:context:summary
+
+# List keys (SCAN; safe on large datasets)
+./scripts/cache scan mema:cache:*
+./scripts/cache keys
+
+# Check connection
+./scripts/cache ping
 ```
+
+## Exit codes
+- 0: Success
+- 1: Redis/cache error
+- 2: Key validation error
